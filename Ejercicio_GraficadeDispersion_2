@@ -1,0 +1,111 @@
+#Creadora: Carola Véjar Quiroga
+###Se realiza una serie de experimentos comparativos de cerebros de tres animales destetados cuyas madres estuvieron expuestas a una dieta restrictivas (desnutridas) y se compararon con tres animales cuyas madres se expusieron a una dieta ad libitum (eunutridas). Se desea saber: ¿Qué miRNAs fueron los que más cambiaron entre los animales desnutridos (tratamiento) comparados con los animales eunutridos (control)?
+
+#Gráfica de puntos
+install.packages("pacman")
+install.packages("ggrepel")
+install.packages("dplyr")
+library(pacman)
+
+p_load("readr", #para lamar las bases de datos
+       "ggplot2", #para graficar
+       "ggrepel", #para etiquetar datos en una gráfica
+       "dplyr", #facilita el manejo de datos
+       "matrixTests") #realiza prueba estadística
+datos <- read_csv(file="https://raw.githubusercontent.com/ManuelLaraMVZ/Transcript-mica/main/DesnutridasvsEunutridas.csv")
+datos
+
+#extracción de genes controles (referencia)
+controles <- datos %>% 
+  filter(Condicion=="Control")
+head(controles)
+
+#sacar promedios de los controles 
+promedio_controles <-  controles %>% 
+  summarise(Mean_C1 = mean(Cx1),
+            Mean_C2 = mean(Cx2),
+            Mean_C3 = mean(Cx3),
+            Mean_T1 = mean(T1),
+            Mean_T2 = mean(T2),
+            Mean_T3 = mean(T3)) %>% 
+  mutate(Gen="Promedio_controles") %>% 
+  select(7,1,2,3,4,5,6) #reordenar las columnas
+promedio_controles
+
+###################################################
+#extraer los genes de la tabla "datos"
+
+genes <- datos %>% 
+  filter(Condicion=="Target") %>% 
+  select(-2)
+head(genes)
+##########
+#Sacar el 2^-DCT
+
+DCT <- genes %>% 
+  mutate(DCT_C1=2^-(Cx1-promedio_controles$Mean_C1),
+         DCT_C2=2^-(Cx2-promedio_controles$Mean_C2),
+         DCT_C3=2^-(Cx3-promedio_controles$Mean_C3),
+         DCT_T1=2^-(T1-promedio_controles$Mean_T1),
+         DCT_T2=2^-(T2-promedio_controles$Mean_T2),
+         DCT_T3=2^-(T3-promedio_controles$Mean_T3)) %>% 
+  select(-2,-3,-4,-5,-6,-7) ###quitar las primeras columnas y sólo dejar los DCT
+
+DCT
+
+promedio_genes<-DCT %>% 
+  mutate(Mean_DCT_Cx=(DCT_C1+DCT_C2+DCT_C3)/3,
+         Mean_DCT_Tx=(DCT_T1+DCT_T2+DCT_T3)/3)
+
+
+promedio_genes
+
+######################################
+#crear gáfica de dispersión
+
+grafica_dispersion <- ggplot(promedio_genes,
+                             mapping = aes(x=Mean_DCT_Cx,
+                                           y=Mean_DCT_Tx))+
+  geom_point(size = 2, 
+             color = "blue")
+
+grafica_dispersion
+
+grafica_dispersion2 <- grafica_dispersion +
+  labs(title = "Condición control vs tratamiento",
+       caption = "Creador= Esteban Domínguez Vasconcelos",
+       x = expression("Condición Control" ~ "-DCT"), 
+       y = expression("Tratamiento" ~ "-DCT")) +
+  geom_smooth(method = "lm", color = "purple") +
+  theme_minimal() +
+  theme(
+    panel.background = element_rect(fill = "white"), 
+    panel.grid.major = element_blank(), 
+    axis.text = element_text(family = "Times New Roman", size = 12), 
+    axis.title = element_text(family = "Times New Roman", size = 14, face = "bold"), 
+    legend.title = element_text(family = "Times New Roman", size = 14), 
+    legend.text = element_text(family = "Times New Roman", size = 14))
+
+grafica_dispersion2
+
+###############################################
+head(promedio_genes)
+
+top_10 <- promedio_genes %>%
+  select (1,8,9) %>%
+  top_n(10, Mean_DCT_Cx) %>%
+  arrange(desc(Mean_DCT_Cx))
+
+head(top_10)
+
+grafica_dispersion3 <- grafica_dispersion2 +
+  geom_label_repel(data = top_10,
+                   mapping = aes(x = Mean_DCT_Cx,
+                                 y = Mean_DCT_Tx,
+                                 label = Gen),
+                   label.padding = unit (0.2, "lines"))
+
+grafica_dispersion3
+
+ggsave("Dispersion1.jpeg", plot = grafica_dispersion3, height = 5, width = 7, dpi = 300)
+
