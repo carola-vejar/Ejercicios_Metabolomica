@@ -1,0 +1,35 @@
+#Creador: Carola Véjar Quiroga
+#Llamado de bases de datos
+
+#Llamar la base de datos desde la computadora
+
+install.packages("readr")
+library(readr)
+
+titulacion <- read_csv(file = "Ejercicio R/datos_titulacion (2).csv")
+
+############################################################################
+#Llamar desde un repositorio (internet)
+
+repositorio <- read_csv(file="https://raw.githubusercontent.com/ManuelLaraMVZ/titulacion_amino_acidos/main/datos_titulacion%20(2).csv")
+head(repositorio) #para ver el encabezado
+View(repositorio)
+
+######################################################3
+#gráfica
+
+install.packages("ggplot2")
+library(ggplot2)
+
+grafica1 <- ggplot(repositorio,
+                  aes(x=Volumen,
+                  y=pH))+
+  geom_line()+
+  labs(title = "Titulación cisteína",
+       x="Volumen ácido (uL)",
+       y="Valor de pH")+
+  theme_dark()
+  
+
+grafica1
+ggsave("titulación_repertorio.jpeg",plot=grafica1,width=6,height=4,dpi=500)
